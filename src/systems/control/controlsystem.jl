@@ -42,10 +42,10 @@ eqs = [
     D(v) ~ u^3
 ]
 
-sys = ControlSystem(loss,eqs,t,[x,v],[u],[])
+sys = OptimalControlSystem(loss,eqs,t,[x,v],[u],[])
 ```
 """
-struct ControlSystem <: AbstractControlSystem
+struct OptimalControlSystem <: AbstractControlSystem
     """The Loss function"""
     loss::Any
     """The ODEs defining the system."""
@@ -66,7 +66,7 @@ struct ControlSystem <: AbstractControlSystem
     """
     systems: The internal systems
     """
-    systems::Vector{ControlSystem}
+    systems::Vector{OptimalControlSystem}
     """
     defaults: The default values to use when initial conditions and/or
     parameters are not supplied in `ODEProblem`.
@@ -74,15 +74,15 @@ struct ControlSystem <: AbstractControlSystem
     defaults::Dict
 end
 
-function ControlSystem(loss, deqs::AbstractVector{<:Equation}, iv, dvs, controls, ps;
+function OptimalControlSystem(loss, deqs::AbstractVector{<:Equation}, iv, dvs, controls, ps;
                        observed = [],
                        systems = ODESystem[],
                        default_u0=Dict(),
                        default_p=Dict(),
                        defaults=_merge(Dict(default_u0), Dict(default_p)),
-                       name=gensym(:ControlSystem))
+                       name=gensym(:OptimalControlSystem))
     if !(isempty(default_u0) && isempty(default_p))
-        Base.depwarn("`default_u0` and `default_p` are deprecated. Use `defaults` instead.", :ControlSystem, force=true)
+        Base.depwarn("`default_u0` and `default_p` are deprecated. Use `defaults` instead.", :OptimalControlSystem, force=true)
     end
     sysnames = nameof.(systems)
     if length(unique(sysnames)) != length(sysnames)
@@ -94,9 +94,92 @@ function ControlSystem(loss, deqs::AbstractVector{<:Equation}, iv, dvs, controls
     ps′ = value.(ps)
     defaults = todict(defaults)
     defaults = Dict(value(k) => value(v) for (k, v) in pairs(defaults))
-    ControlSystem(value(loss), deqs, iv′, dvs′, controls′,
+    OptimalControlSystem(value(loss), deqs, iv′, dvs′, controls′,
                   ps′, observed, name, systems, defaults)
 end
+
+
+"""
+$(TYPEDEF)
+
+A system describing a generic control problem. This contains ordinary 
+differential equations with control variables that describe the
+dynamics.
+
+# Fields
+$(FIELDS)
+
+# Example
+
+```julia
+using ModelingToolkit
+
+@variables t x(t) v(t) u(t)
+D = Differential(t)
+
+eqs = [
+    D(x) ~ v
+    D(v) ~ u^3
+]
+
+sys = ControlSystem(eqs,t,[x,v],[u],[])
+```
+"""
+struct ControlSystem <: AbstractControlSystem
+    """The ODEs defining the system."""
+    eqs::Vector{Equation}
+    """Independent variable."""
+    iv::Sym
+    """Dependent (state) variables."""
+    states::Vector
+    """Control variables."""
+    controls::Vector
+    """Parameter variables."""
+    ps::Vector
+    observed::Vector{Equation}
+    """
+    Name: the name of the system. These are required to have unique names.
+    """
+    name::Symbol
+    """
+    systems: The internal systems
+    """
+    systems::Vector{OptimalControlSystem}
+    """
+    defaults: The default values to use when initial conditions and/or
+    parameters are not supplied in `ODEProblem`.
+    """
+    defaults::Dict
+end
+
+
+function ControlSystem(deqs::AbstractVector{<:Equation}, iv, dvs, controls, ps;
+                              observed   = [],
+                              systems    = ODESystem[],
+                              default_u0 = Dict(),
+                              default_p  = Dict(),
+                              defaults   = _merge(Dict(default_u0), Dict(default_p)),
+                              name       = gensym(:OptimalControlSystem))
+
+    if !(isempty(default_u0) && isempty(default_p))
+    Base.depwarn("`default_u0` and `default_p` are deprecated. Use `defaults` instead.", :ControlSystem, force=true)
+    end
+    sysnames = nameof.(systems)
+    if length(unique(sysnames)) != length(sysnames)
+    throw(ArgumentError("System names must be unique."))
+    end
+    iv′ = value(iv)
+    dvs′ = value.(dvs)
+    controls′ = value.(controls)
+    ps′ = value.(ps)
+    defaults = todict(defaults)
+    defaults = Dict(value(k) => value(v) for (k, v) in pairs(defaults))
+    ControlSystem(deqs, iv′, dvs′, controls′,
+    ps′, observed, name, systems, defaults)
+
+end
+
+
 
 struct ControlToExpr
     sys::AbstractControlSystem

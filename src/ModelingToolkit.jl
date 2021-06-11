@@ -151,7 +151,7 @@ export AutoModelingToolkit
 export SteadyStateProblem, SteadyStateProblemExpr
 export JumpProblem, DiscreteProblem
 export NonlinearSystem, OptimizationSystem
-export ControlSystem
+export ControlSystem, OptimalControlSystem
 export alias_elimination, flatten, connect, @connector
 export ode_order_lowering, liouville_transform
 export runge_kutta_discretize
